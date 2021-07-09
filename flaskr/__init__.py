@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, redirect, url_for
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -20,19 +20,19 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    @app.route("/hello")
-    def hello():
-        return "hello world"
+    @app.route("/")
+    def index():
+        return "Welcome"
 
     
     from flaskr import db    
     db.init_app(app)
 
-    # from flaskr import auth, blog
+    from flaskr import auth
 
-    # app.register_blueprint(auth.bp)
+    app.register_blueprint(auth.auth_bp)
     # app.register_blueprint(blog.bp)
 
-    # app.add_url_rule("/", endpoint="index")
+    app.add_url_rule("/", endpoint="index")
 
     return app
