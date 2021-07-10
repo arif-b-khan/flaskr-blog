@@ -3,6 +3,7 @@ from flask import Flask, redirect, url_for
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
+    
     app.config.from_mapping(
         SECRET_KEY="dev",
         DATABASE=os.path.join(app.instance_path, "flaskr.sqlite")
@@ -19,20 +20,16 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
-
-    @app.route("/")
-    def index():
-        return "Welcome"
-
     
     from flaskr import db    
     db.init_app(app)
 
-    from flaskr import auth
+    from flaskr import auth, blog
 
     app.register_blueprint(auth.auth_bp)
-    # app.register_blueprint(blog.bp)
+    app.register_blueprint(blog.bp)
 
     app.add_url_rule("/", endpoint="index")
+    print("Flaskr application created")
 
     return app
