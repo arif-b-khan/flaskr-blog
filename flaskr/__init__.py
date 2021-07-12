@@ -1,5 +1,43 @@
 import os
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, has_request_context, request
+from logging.config import dictConfig
+from flask import logging
+from flask.logging import default_handler
+from logging import Formatter
+class RequestFormatter(Formatter):
+    def format(self, record):
+        if has_request_context():
+            record.url = request.url
+            record.remote_addr = request.remote_addr
+        else:
+            record.url = None
+            record.remote_addr = None
+        return super().format(record)
+
+
+formatter = RequestFormatter(
+    '[%(asctime)s] %(remote_addr)s requested %(url)s\n'
+    '%(levelname)s in %(module)s: %(message)s'
+)
+
+default_handler.setFormatter(formatter)
+
+    
+# dictConfig({
+#     'version': 1,
+#     'formatters': {'default': {
+#         'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+#     }},
+#     'handlers': {'wsgi': {
+#         'class': 'logging.StreamHandler',
+#         'stream': 'ext://flask.logging.wsgi_errors_stream',
+#         'formatter': 'default'
+#     }},
+#     'root': {
+#         'level': 'INFO',
+#         'handlers': ['wsgi']
+#     }
+# })
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
