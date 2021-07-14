@@ -1,9 +1,18 @@
 import os
 from flask import Flask, redirect, url_for, has_request_context, request
 from logging.config import dictConfig
-from flask import logging
+from flask import logging, request_started, request_finished
 from flask.logging import default_handler
-from logging import Formatter
+from logging import Formatter, debug
+
+# Adding signals for request
+def log_request(sender, **extra):
+    sender.logger.debug('Request context is set up')
+
+def log_finished_request(sender, **extra):
+    sender.logger.debug("Request context is finished")
+
+
 class RequestFormatter(Formatter):
     def format(self, record):
         if has_request_context():
@@ -41,7 +50,8 @@ default_handler.setFormatter(formatter)
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
-    
+    request_started.connect(log_request, app)
+    request_finished.connect(log_finished_request, app)
     app.config.from_mapping(
         SECRET_KEY="dev",
         DATABASE=os.path.join(app.instance_path, "flaskr.sqlite")
