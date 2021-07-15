@@ -1,33 +1,40 @@
 import sqlite3
 import click
+import pdb
 
 from sqlite3.dbapi2 import PARSE_DECLTYPES
 from flask import current_app, g
+from werkzeug.security import generate_password_hash
 from flask.cli import with_appcontext
-
+from flask_sqlalchemy import SQLAlchemy
+from . import orm
 
 def get_db():
-    print(f"DATABASE: getting db {g is None}")
-    if "db" not in g:
-        g.db = sqlite3.connect(
-            current_app.config["DATABASE"], 
-            detect_types=PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
-    return g.db
+    print(f"DATABASE: getting db {g is None}")    
+    return orm
 
 
 def close_db(e=None):
-    db = g.pop("db", None)
+    print("Closing db instance")
+    db = g.pop('db', None)
     if db is not None:
-        db.close()
+        db.session.close()
     
 
 def init_db():
+    print("Initializing database")
+    print(current_app.config["DATABASE"])
     db = get_db()
-
-    with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
+    from .models import Employee, User, Post
+    print("Creating tables")
+    pwd = generate_password_hash("12345")
+    arif = User.query.filter_by(username='arif').first()
+    if arif is None:
+        arif = User(username="arif", password=pwd)
+        Post(title="test", body="test body", author=arif)
+        db.session.add(arif)
+        db.session.commit()
+    db.create_all()
 
 
 @click.command("init-db")
@@ -39,3 +46,4 @@ def init_db_command():
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    

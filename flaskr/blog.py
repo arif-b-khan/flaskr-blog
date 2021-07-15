@@ -1,23 +1,22 @@
+from flaskr.models import user
 from flask import Blueprint
 from flask import request
 from flask import g
 from flask.helpers import flash, url_for
 from flask.templating import render_template
+from sqlalchemy.orm.session import Session
 from werkzeug.exceptions import abort
 from werkzeug.utils import redirect
-
-from .db import get_db
+from sqlalchemy.orm import joinedload
 from .auth import login_required
-
+from .models import User, Post
+from .db import get_db
 bp = Blueprint("blog", __name__)
 
 @bp.route("/")
 def index():
     print(url_for("blog.update", id=[1]))
-    db = get_db()
-    posts = db.execute(  "SELECT p.id, title, body, created, author_id, username"
-        " FROM post p JOIN user u ON p.author_id = u.id"
-        " ORDER BY created DESC").fetchall()
+    posts = Post.query.options(joinedload('author'))
     return render_template("blog/index.html", posts=posts)
 
 
@@ -38,24 +37,19 @@ def create():
             flash(error)
         else:
             db = get_db()
-            db.execute(
-                "INSERT INTO post (title, body, author_id) VALUES (?, ?, ?)",
-                (title, body, g.user['id']),
-            )
-            db.commit()
+            post = Post(title=title, body=body, author_id=g.user.id)
+            db.session.add(post)
+            db.session.commit()
             return redirect(url_for("blog.index"))
     return render_template("blog/create.html")
 
 
 def get_post(id, check_author=True):
-    post = (get_db().execute("select p.id, title, body, created, author_id, username"
-                        " FROM post p JOIN user u on p.author_id = u.id"
-                        " where p.id = ?", (id,),)
-                        .fetchone()
-            )
+    db = get_db()
+    post = Post.query.join(User).add_columns(Post.id, Post.title, Post.body, Post.author_id, User.username).filter(Post.author_id == User.id).filter(Post.id == id).first()
     if post is None:
         abort(404, f'Post id {id} doesn\'t exsits')
-    if check_author and post['author_id'] != g.user["id"]:
+    if check_author and post.author_id != g.user.id:
         abort(403, "Access denied to this post")
     
     return post
@@ -78,11 +72,10 @@ def update(id):
             flash(error)
         else:
             db = get_db()
-            db.execute(
-                "UPDATE post SET title = ?, body = ? where id = ?",
-                (title, body, post['id']),
-            )
-            db.commit()
+            post = Post.query.get(post['id'])
+            post.title = title
+            post.body = body
+            db.session.commit()
             return redirect(url_for("blog.index"))
 
     return render_template("blog/update.html", post=post)
@@ -91,15 +84,13 @@ def update(id):
 @bp.route("/<int:id>/delete", methods=("POST",))
 @login_required
 def delete(id):
-    post = get_post(id)
-    
+    post = Post.query.get(id)    
     if post is None:
         abort(404, f"Post not found for id: {id}")
     
     db = get_db()
-    db.execute("DELETE from post where id = ? ", (id,),)
-    db.commit()
-
+    db.session.delete(post)
+    db.session.commit()
     return redirect(url_for("blog.index"))
 
 

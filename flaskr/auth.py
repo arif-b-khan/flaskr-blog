@@ -12,8 +12,8 @@ from flask import (
 )
 from werkzeug import wrappers
 from werkzeug.security import check_password_hash, generate_password_hash
-
-from flaskr.db import get_db
+from .db import get_db
+from .models import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -25,6 +25,7 @@ def login_required(view):
             return redirect(url_for("auth.login"))
         return view(**kwargs)
     return wrapped_view
+    
 
 @auth_bp.before_app_request
 def load_logged_in_user():
@@ -32,7 +33,7 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        g.user = (get_db().execute("select * from user where id = ?", (user_id,)).fetchone())
+        g.user = User.query.filter_by(id=user_id).first()
 
 
 @auth_bp.route('/register', methods=("GET", "POST"))
@@ -48,14 +49,15 @@ def register():
         elif not password:
             error = 'password is required'
         elif (
-            db.execute("select id from user where username = ?", (username,)).fetchone()
+            User.query.filter_by(username = username).first()
             is not None
         ):
             error = f'Username: {username} already exists'
 
         if error is None:
-            db.execute("INSERT INTO user (username, password) values (?, ?)", (username, generate_password_hash(password)))
-            db.commit()
+            user = User(username=username, password=generate_password_hash(password))
+            db.sesssion.add(user)
+            db.session.commit()
             return redirect(url_for("auth.login"))
         
         flash(error)
@@ -69,7 +71,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         db = get_db()
-        user = db.execute("select * from user where username = ?", (username,)).fetchone()
+        user = User.query.filter_by(username=username).first()
         error = None
         if user is None:
             error = "Incorrect username"

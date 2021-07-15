@@ -5,6 +5,25 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "flaskr",
+                "FLASK_ENV": "development"
+            },
+            "args": [
+                "init-db"
+            ]
+        },
+        {
+            "name": "Python: Attach using Process Id",
+            "type": "python",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        },
+        {
             "name": "Python: Flask",
             "type": "python",
             "request": "launch",

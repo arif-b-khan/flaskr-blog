@@ -1,9 +1,15 @@
 import os
-from flask import Flask, redirect, url_for, has_request_context, request
+import sys
+from flask import Flask, redirect, url_for, has_request_context, request, g
 from logging.config import dictConfig
 from flask import logging, request_started, request_finished
 from flask.logging import default_handler
 from logging import Formatter, debug
+
+from flask_sqlalchemy import SQLAlchemy
+
+orm = SQLAlchemy()
+
 
 # Adding signals for request
 def log_request(sender, **extra):
@@ -54,8 +60,10 @@ def create_app(test_config=None):
     request_finished.connect(log_finished_request, app)
     app.config.from_mapping(
         SECRET_KEY="dev",
-        DATABASE=os.path.join(app.instance_path, "flaskr.sqlite")
+        DATABASE=os.path.join(app.instance_path, "flaskr_orm.sqlite")
     )
+    app.config["SQLALCHEMY_DATABASE_URI"] = f'sqlite:///{app.config["DATABASE"]}'
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     if test_config is None:
         app.config.from_pyfile("config.py", silent=True)
@@ -73,13 +81,15 @@ def create_app(test_config=None):
     def hello():
         return "Hello, World!"
 
+
     from flaskr import db    
     db.init_app(app)
+    with app.app_context():                
+        orm.init_app(app)
+        from flaskr import auth, blog
+        app.register_blueprint(auth.auth_bp)
+        app.register_blueprint(blog.bp)
 
-    from flaskr import auth, blog
-
-    app.register_blueprint(auth.auth_bp)
-    app.register_blueprint(blog.bp)
 
     app.add_url_rule("/", endpoint="index")
     print("Flaskr application created")
