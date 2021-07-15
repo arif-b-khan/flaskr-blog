@@ -25,7 +25,7 @@ def login_required(view):
             return redirect(url_for("auth.login"))
         return view(**kwargs)
     return wrapped_view
-    
+
 
 @auth_bp.before_app_request
 def load_logged_in_user():
@@ -62,7 +62,10 @@ def register():
         
         flash(error)
 
-    return render_template("auth/register.html")
+    if g.user.id is None: 
+        return render_template("auth/register.html")
+    else: 
+        return redirect(url_for("index"))
 
 
 @auth_bp.route('/login', methods=("GET", "POST"))
@@ -75,12 +78,12 @@ def login():
         error = None
         if user is None:
             error = "Incorrect username"
-        elif not check_password_hash(user["password"], password):
+        elif not check_password_hash(user.password, password):
             error = "Incorrect password"
         
         if error is None:
             session.clear()
-            session['user_id'] = user['id']
+            session['user_id'] = user.id
             return redirect(url_for("index"))
         
         flash(error)

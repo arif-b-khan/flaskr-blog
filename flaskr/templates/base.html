@@ -4,7 +4,12 @@
 <nav>
   <h1><a href="{{ url_for('index') }}">Flaskr</a></h1>
   <ul>
-
+    {% if g.user %}
+        <label>{{g.user.username}}</label> | 
+        <a class="action" href={{url_for('auth.logout')}}>Logout</a>
+    {% else %}
+        <a class="action" href={{url_for('auth.login')}}>Login</a>
+    {% endif%}
   </ul>
 </nav>
 <section class="content">
