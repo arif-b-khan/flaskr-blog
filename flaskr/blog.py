@@ -8,7 +8,7 @@ from sqlalchemy.orm.session import Session
 from werkzeug.exceptions import abort
 from werkzeug.utils import redirect
 from sqlalchemy.orm import joinedload
-from .auth import login_required
+from flask_login import login_required
 from .models import User, Post
 from .db import get_db
 bp = Blueprint("blog", __name__)
@@ -18,6 +18,13 @@ def index():
     print(url_for("blog.update", id=[1]))
     posts = Post.query.options(joinedload('author'))
     return render_template("blog/index.html", posts=posts)
+
+
+@bp.route("/secret")
+@login_required
+def secret():
+    posts = Post.query.options(joinedload('author'))
+    return render_template("blog/secret.html", posts=posts)
 
 
 @bp.route("/create", methods=("GET", "POST"))
@@ -92,6 +99,8 @@ def delete(id):
     db.session.delete(post)
     db.session.commit()
     return redirect(url_for("blog.index"))
+
+
 
 
 

@@ -5,11 +5,14 @@ from logging.config import dictConfig
 from flask import logging, request_started, request_finished
 from flask.logging import default_handler
 from logging import Formatter, debug
-
+from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
 orm = SQLAlchemy()
-
+login_manager = LoginManager()
+login_manager.login_view = "auth.login"
+login_manager.login_message = u"Please login to access this page"
+login_manager.login_message_category = "info"
 
 # Adding signals for request
 def log_request(sender, **extra):
@@ -84,7 +87,8 @@ def create_app(test_config=None):
 
     from flaskr import db    
     db.init_app(app)
-    with app.app_context():                
+    with app.app_context():
+        login_manager.init_app(app)               
         orm.init_app(app)
         from flaskr import auth, blog
         app.register_blueprint(auth.auth_bp)

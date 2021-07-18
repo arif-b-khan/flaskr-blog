@@ -8,23 +8,30 @@ from flask import (
     render_template,
     request, 
     session, 
-    url_for
+    url_for, 
+    abort
 )
+from is_safe_url import is_safe_url
 from werkzeug import wrappers
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import login_required, logout_user
 from .db import get_db
 from .models import User
-
+from . import login_manager
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
-def login_required(view):
-    @functools.wraps(view)
-    def wrapped_view(**kwargs):
-        if g.user is None:
-            return redirect(url_for("auth.login"))
-        return view(**kwargs)
-    return wrapped_view
+@login_manager.user_loader
+def login_user(user_id):
+    return User.query.get(user_id)
+
+# def login_required(view):
+#     @functools.wraps(view)
+#     def wrapped_view(**kwargs):
+#         if g.user is None:
+#             return redirect(url_for("auth.login"))
+#         return view(**kwargs)
+#     return wrapped_view
 
 
 @auth_bp.before_app_request
@@ -73,7 +80,6 @@ def login():
     if request.method == "POST":
         username = request.form['username']
         password = request.form['password']
-        db = get_db()
         user = User.query.filter_by(username=username).first()
         error = None
         if user is None:
@@ -84,7 +90,12 @@ def login():
         if error is None:
             session.clear()
             session['user_id'] = user.id
-            return redirect(url_for("index"))
+            login_user(user.id)
+            next = request.args.get('next')
+            if not is_safe_url(next, allowed_hosts=None, require_https=False):
+                return abort(400)
+
+            return redirect(next or url_for("index"))
         
         flash(error)
 
@@ -92,6 +103,8 @@ def login():
 
 
 @auth_bp.route("/logout")
+@login_required
 def logout():
     session.clear()
+    logout_user()
     return redirect(url_for("index"))
